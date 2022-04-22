@@ -5,3 +5,6 @@
 build
 a.out
 .coverage
+#install caches
+*.egg-info
+dist/

@@ -1991,7 +1991,7 @@ class GromacsTopologyFile(Structure, TopFromStructureMixin, metaclass=FileFormat
                         a1, a2 = EP.frame_type.get_atoms()
                         dest.write('%-5d %-4d %-4d %-4d   %.6f\n' %
                                    (EP.idx+1, a1.idx+1, a2.idx+1, 1,
-                                    EP.frame_type.get_weights()[0]))
+                                    EP.frame_type.get_weights()[1]))
                     dest.write('\n')
                 elif ftype in (ThreeParticleExtraPointFrame,
                                OutOfPlaneExtraPointFrame):
@@ -2012,15 +2012,21 @@ class GromacsTopologyFile(Structure, TopFromStructureMixin, metaclass=FileFormat
                                       (EP.idx+1, a1.idx+1, a2.idx+1, a3.idx+1, w1, w2, w3))
                     dest.write('\n')
         # Do we need to list exclusions for systems with EPs?
+        # We don't need to write all exclusions explicitly, instead we only need to 
+        # write exclusions involved in virtual site atoms
         if EPs or settle:
             dest.write('[ exclusions ]\n')
             for i, atom in enumerate(struct.atoms):
-                dest.write('%d' % (i+1))
-                for a in atom.bond_partners:
-                    dest.write('  %d' % (a.idx+1))
-                for a in atom.angle_partners:
-                    dest.write('  %d' % (a.idx+1))
-                dest.write('\n')
+                if isinstance(atom, ExtraPoint):
+                    dest.write('%d' % (i+1))
+                    for a in atom.bond_partners:
+                        dest.write('  %d' % (a.idx+1))
+                    for a in atom.parent.angle_partners:
+                        dest.write('  %d' % (a.idx+1))
+                    if struct.nrexcl == 3:
+                        for a in atom.dihedral_partners:
+                            dest.write('  %d' % (a.idx+1))
+                    dest.write('\n')
             dest.write('\n')
 
     #===================================================

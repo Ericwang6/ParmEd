@@ -5,6 +5,7 @@ as atoms, residues, bonds, angles, etc.
 by Jason Swails
 """
 import math
+from typing import Tuple
 import warnings
 from copy import copy
 from functools import wraps
@@ -1243,6 +1244,27 @@ class TwoParticleExtraPointFrame:
             return ((r1 - r2) / r1), (r2 / r1)
         else:
             return ((r1 + r2) / r1), -(r2 / r1)
+        
+    def set_positions(self) -> Tuple[float, float, float]:
+        """
+        Set the positions of the ExtraPoint and return them
+
+        Returns
+        -------
+        xx, xy, xz: ``float, float, float``
+            the coordinates of ExtraPoint, calculated based on weights, in angstrom
+        """
+        ep = self.ep
+        if not hasattr(ep.parent, "xx"):
+            raise ValueError("Parent atom does not have coordinates")
+        
+        at1, at2 = self.get_atoms()
+        wt = self.get_weights()[1] # r2 / r1
+        ep.xx = (1 - wt) * at1.xx + wt * at2.xx
+        ep.xy = (1 - wt) * at1.xy + wt * at2.xy
+        ep.xz = (1 - wt) * at1.xz + wt * at2.xz
+        return ep.xx, ep.xy, ep.xz
+
 
 class ThreeParticleExtraPointFrame:
     r"""
@@ -1461,12 +1483,34 @@ class ThreeParticleExtraPointFrame:
                                    'three-site virtual site frame')
         req12 = b1.type.req
         req13 = b2.type.req
-        weight = b3.type.req / math.sqrt(req12*req13 - 0.25*req23*req23)
+        tmp = req12 * req13 / (req12 + req13) ** 2
+        weight = b3.type.req / math.sqrt(req12*req13 - tmp*req23*req23)
 
         if self.inside:
             return 1 - weight, weight / 2, weight / 2
         else:
             return 1 + weight, -weight / 2, -weight / 2
+    
+    def set_positions(self) -> Tuple[float, float, float]:
+        """
+        Set the positions of the ExtraPoint and return them
+
+        Returns
+        -------
+        xx, xy, xz: ``float, float, float``
+            the coordinates of ExtraPoint, calculated based on weights, in angstrom
+        """
+        ep = self.ep
+        if not hasattr(ep.parent, "xx"):
+            raise ValueError("Parent atom does not have coordinates")
+        
+        at1, at2, at3 = self.get_atoms()
+        wt1, wt2, wt3 = self.get_weights()
+        ep.xx = wt1 * at1.xx + wt2 * at2.xx + wt3 * at3.xx
+        ep.xy = wt1 * at1.xy + wt2 * at2.xy + wt3 * at3.xy
+        ep.xz = wt1 * at1.xz + wt2 * at2.xz + wt3 * at3.xz
+        return ep.xx, ep.xy, ep.xz
+
 
 class OutOfPlaneExtraPointFrame:
     r"""
